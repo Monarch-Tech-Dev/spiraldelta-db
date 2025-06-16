@@ -480,7 +480,7 @@ Looking for production-grade features? **Monarch AI** offers enterprise solution
 - Enterprise security and compliance
 - Premium support and consulting
 
-**Contact**: [enterprise@monarchai.com](mailto:enterprise@monarchai.com)
+**Contact**: [monarch@soft-armor.io](mailto:monarch@soft-armor.io)
 
 ## 🔗 Links
 
