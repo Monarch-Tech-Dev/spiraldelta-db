@@ -488,8 +488,6 @@ Looking for production-grade features? **Monarch AI** offers enterprise solution
 - **GitHub**: [github.com/monarch-ai/spiraldelta-db](https://github.com/monarch-ai/spiraldelta-db)
 - **Issues**: [github.com/monarch-ai/spiraldelta-db/issues](https://github.com/monarch-ai/spiraldelta-db/issues)
 - **Discussions**: [github.com/monarch-ai/spiraldelta-db/discussions](https://github.com/monarch-ai/spiraldelta-db/discussions)
-- **Enterprise**: [monarchai.com/spiraldelta-enterprise](https://monarchai.com/spiraldelta-enterprise)
-
 ## 🏆 Acknowledgments
 
 - Inspired by geometric principles in vector space optimization
