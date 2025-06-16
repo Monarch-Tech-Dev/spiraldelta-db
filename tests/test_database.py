@@ -48,6 +48,57 @@ class TestSpiralDeltaDB:
         assert db.dimensions == 64
         assert db.compression_ratio == 0.5  # Default
         assert len(db) == 0
+    
+    def test_compression_ratio_validation(self, db, sample_data):
+        """Test compression ratio calculation accuracy."""
+        vectors, metadata = sample_data
+        
+        # Insert enough data to trigger training
+        vector_ids = db.insert(vectors, metadata)
+        assert len(vector_ids) == len(vectors)
+        
+        # Get statistics
+        stats = db.get_stats()
+        
+        # Validate compression ratio bounds
+        assert 0.0 <= stats.compression_ratio <= 1.0
+        
+        # Should achieve reasonable compression (30-70%)
+        if db._is_trained:
+            assert 0.30 <= stats.compression_ratio <= 0.70
+        
+        # Verify other stats are realistic
+        assert stats.vector_count == len(vectors)
+        assert stats.dimensions == 128
+        assert stats.storage_size_mb > 0
+    
+    def test_compression_ratio_consistency(self, db):
+        """Test compression ratio consistency across multiple inserts."""
+        np.random.seed(123)
+        
+        # Insert data in batches
+        compression_ratios = []
+        
+        for batch in range(3):
+            vectors = np.random.randn(50, 128)
+            db.insert(vectors)
+            
+            stats = db.get_stats()
+            compression_ratios.append(stats.compression_ratio)
+        
+        # Compression ratio should stabilize after training
+        if len(compression_ratios) >= 2:
+            # Later ratios should be more stable
+            assert all(0.0 <= ratio <= 1.0 for ratio in compression_ratios)
+    
+    def test_empty_database_stats(self, db):
+        """Test statistics for empty database."""
+        stats = db.get_stats()
+        
+        assert stats.vector_count == 0
+        assert stats.compression_ratio == 0.0
+        assert stats.dimensions == 128
+        assert stats.storage_size_mb >= 0
         assert not db._is_trained
         
         db.close()

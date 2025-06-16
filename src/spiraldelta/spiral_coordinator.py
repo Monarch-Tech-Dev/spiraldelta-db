@@ -49,7 +49,7 @@ class SpiralCoordinator:
         if reference_vector is not None:
             if reference_vector.shape != (dimensions,):
                 raise ValueError(f"Reference vector must have shape ({dimensions},)")
-            self.reference_vector = reference_vector.copy()
+            self.reference_vector = reference_vector.astype(np.float32)
         else:
             # Initialize with random unit vector
             self.reference_vector = self._generate_random_reference()
@@ -62,7 +62,7 @@ class SpiralCoordinator:
     
     def _generate_random_reference(self) -> np.ndarray:
         """Generate a random unit reference vector."""
-        ref = np.random.randn(self.dimensions)
+        ref = np.random.randn(self.dimensions).astype(np.float32)
         return ref / np.linalg.norm(ref)
     
     def transform(self, vector: np.ndarray) -> SpiralCoordinate:
@@ -79,8 +79,8 @@ class SpiralCoordinator:
             raise ValueError(f"Vector must have shape ({self.dimensions},)")
         
         # Compute spiral angle using optimized function
-        theta = self._compute_spiral_angle(vector, self.reference_vector)
-        radius = np.linalg.norm(vector)
+        theta = float(self._compute_spiral_angle(vector, self.reference_vector))
+        radius = float(np.linalg.norm(vector))
         
         # Update reference vector adaptively
         if self.adaptive_reference:
@@ -108,6 +108,10 @@ class SpiralCoordinator:
         Returns:
             Spiral angle in radians
         """
+        # Ensure both arrays have same dtype
+        vector = vector.astype(np.float32)
+        reference = reference.astype(np.float32)
+        
         # Compute dot product and magnitudes
         dot_product = np.dot(vector, reference)
         vector_magnitude = np.sqrt(np.sum(vector * vector))

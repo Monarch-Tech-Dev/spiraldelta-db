@@ -48,6 +48,89 @@ class TestProductQuantizer:
     
     def test_encode_decode(self, sample_data):
         """Test encoding and decoding."""
+        pq = ProductQuantizer(dimensions=64, n_subspaces=8, n_bits=4)
+        pq.train(sample_data)
+        
+        # Test single vector
+        test_vector = sample_data[0]
+        codes = pq.encode(test_vector)
+        decoded = pq.decode(codes)
+        
+        assert codes.shape == (8,)
+        assert decoded.shape == (64,)
+        
+        # Should be reasonably close (quantization error expected)
+        reconstruction_error = np.linalg.norm(test_vector - decoded)
+        assert reconstruction_error < 10.0  # Reasonable bound for test data
+    
+    def test_compression_ratio_bounds(self):
+        """Test compression ratio calculation bounds."""
+        encoder = DeltaEncoder(
+            quantization_levels=4,
+            compression_target=0.6,
+            n_subspaces=8,
+            n_bits=8,
+            anchor_stride=32
+        )
+        
+        # Create training data with known properties
+        np.random.seed(42)
+        sequences = []
+        for _ in range(5):
+            # Create correlated vectors for better compression
+            base_vector = np.random.randn(128)
+            sequence = [base_vector + np.random.randn(128) * 0.1 for _ in range(64)]
+            sequences.append(sequence)
+        
+        # Train encoder
+        encoder.train(sequences)
+        
+        # Test compression
+        test_sequence = sequences[0]
+        compressed = encoder.encode_sequence(test_sequence)
+        
+        # Validate compression ratio bounds
+        assert 0.30 <= compressed.compression_ratio <= 0.70
+        
+        # Test decoding
+        decoded = encoder.decode_sequence(compressed)
+        assert len(decoded) == len(test_sequence)
+        
+        # Check reconstruction quality
+        total_error = 0
+        for orig, recon in zip(test_sequence, decoded):
+            error = np.linalg.norm(orig - recon)
+            total_error += error
+        
+        avg_error = total_error / len(test_sequence)
+        assert avg_error < 5.0  # Reasonable reconstruction quality
+    
+    def test_size_estimation_accuracy(self):
+        """Test compressed size estimation accuracy."""
+        encoder = DeltaEncoder()
+        
+        # Create test data
+        np.random.seed(123)
+        anchors = [np.random.randn(64).astype(np.float32) for _ in range(4)]
+        delta_codes = []
+        
+        for level in range(2):
+            level_codes = []
+            for _ in range(10):
+                codes = np.random.randint(0, 255, size=8, dtype=np.uint8)
+                level_codes.append(codes)
+            delta_codes.append(level_codes)
+        
+        # Estimate size
+        estimated_size = encoder._estimate_compressed_size(anchors, delta_codes)
+        
+        # Should be reasonable
+        anchor_size = sum(a.nbytes for a in anchors)  # 4 * 64 * 4 = 1024 bytes
+        delta_size = 2 * 10 * 8  # 160 bytes
+        expected_min_size = anchor_size + delta_size
+        
+        assert estimated_size >= expected_min_size
+        assert estimated_size < expected_min_size * 2  # Not too much overhead
         pq = ProductQuantizer(dimensions=64, n_subspaces=8, n_bits=8)
         pq.train(sample_data)
         

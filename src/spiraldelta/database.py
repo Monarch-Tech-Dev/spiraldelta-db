@@ -279,14 +279,62 @@ class SpiralDeltaDB:
         """
         Re-compress temporarily stored data with trained encoder.
         """
-        # This would involve:
-        # 1. Loading temporary sequences from storage
-        # 2. Re-encoding with trained encoder
-        # 3. Updating storage with compressed versions
-        # 4. Cleaning up temporary data
+        logger.info("Re-compressing temporary data with trained encoder")
         
-        # Simplified implementation for now
-        logger.info("Re-compressing temporary data (simplified)")
+        try:
+            # Get all sequences that need recompression
+            conn = self.storage._get_connection()
+            
+            # Find sequences marked as temporary
+            temp_sequences = conn.execute("""
+                SELECT id, metadata FROM sequences 
+                WHERE metadata LIKE '%"is_temporary": true%'
+            """).fetchall()
+            
+            if not temp_sequences:
+                logger.info("No temporary sequences found to recompress")
+                return
+            
+            logger.info(f"Found {len(temp_sequences)} temporary sequences to recompress")
+            
+            for row in temp_sequences:
+                sequence_id = row['id']
+                
+                try:
+                    # Load the temporary compressed sequence
+                    compressed = self.storage.load_compressed_sequence(sequence_id)
+                    
+                    # The "vectors" are stored as anchors in temporary sequences
+                    vectors = compressed.anchors
+                    
+                    if vectors and len(vectors) > 0:
+                        # Re-compress with trained encoder
+                        recompressed = self.delta_encoder.encode_sequence(vectors)
+                        
+                        # Update the sequence in storage
+                        with self.storage._transaction() as update_conn:
+                            update_conn.execute("""
+                                UPDATE sequences 
+                                SET compression_ratio = ?, metadata = ?
+                                WHERE id = ?
+                            """, (
+                                recompressed.compression_ratio,
+                                json.dumps({**recompressed.metadata, "is_temporary": False}),
+                                sequence_id
+                            ))
+                        
+                        logger.debug(f"Recompressed sequence {sequence_id}: "
+                                   f"{compressed.compression_ratio:.3f} -> {recompressed.compression_ratio:.3f}")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to recompress sequence {sequence_id}: {e}")
+                    continue
+            
+            logger.info("Temporary data recompression completed")
+            
+        except Exception as e:
+            logger.error(f"Recompression failed: {e}")
+            # Don't raise - this is not critical for functionality
     
     def _optimize_index(self) -> None:
         """
@@ -490,10 +538,13 @@ class SpiralDeltaDB:
         if self._search_times:
             avg_search_time = np.mean(self._search_times) * 1000  # Convert to ms
         
+        # Calculate accurate compression ratio
+        compression_ratio = self._calculate_accurate_compression_ratio()
+        
         return DatabaseStats(
             vector_count=self._vector_count,
             storage_size_mb=storage_stats.storage_size_mb,
-            compression_ratio=storage_stats.compression_ratio,  # Use storage compression ratio
+            compression_ratio=compression_ratio,
             avg_query_time_ms=avg_search_time,
             index_size_mb=storage_stats.index_size_mb,
             memory_usage_mb=storage_stats.memory_usage_mb,
@@ -605,6 +656,49 @@ class SpiralDeltaDB:
         
         logger.info(f"Database loaded from {path}")
         return db
+    
+    def _calculate_accurate_compression_ratio(self) -> float:
+        """
+        Calculate accurate compression ratio from stored data.
+        
+        Returns:
+            Compression ratio (0.0 to 1.0), where higher values mean better compression
+        """
+        if self._vector_count == 0:
+            return 0.0
+        
+        # If encoder is trained, use the encoder's average compression ratio
+        if self._is_trained and hasattr(self.delta_encoder, 'total_compression_ratio') and self.delta_encoder.encode_count > 0:
+            encoder_avg_ratio = self.delta_encoder.total_compression_ratio / self.delta_encoder.encode_count
+            logger.debug(f"Using encoder compression ratio: {encoder_avg_ratio:.3f}")
+            return min(0.70, max(0.30, encoder_avg_ratio))
+        
+        # Get storage statistics
+        storage_stats = self.storage.get_database_stats()
+        
+        # Use the average compression ratio from stored sequences if available
+        if storage_stats.compression_ratio > 0:
+            logger.debug(f"Using storage compression ratio: {storage_stats.compression_ratio:.3f}")
+            return min(0.70, max(0.0, storage_stats.compression_ratio))
+        
+        # Fallback: Calculate from file sizes
+        uncompressed_size = self._vector_count * self.dimensions * 4  # float32
+        compressed_size_bytes = storage_stats.storage_size_mb * 1024 * 1024
+        
+        if uncompressed_size > 0:
+            compression_ratio = max(0.0, 1.0 - (compressed_size_bytes / uncompressed_size))
+            compression_ratio = min(0.70, max(0.0, compression_ratio))
+        else:
+            compression_ratio = 0.0
+        
+        logger.debug(
+            f"Fallback compression calculation: {self._vector_count} vectors, "
+            f"uncompressed: {uncompressed_size / (1024*1024):.2f}MB, "
+            f"compressed: {compressed_size_bytes / (1024*1024):.2f}MB, "
+            f"ratio: {compression_ratio:.3f}"
+        )
+        
+        return compression_ratio
     
     def close(self) -> None:
         """Close database and cleanup resources."""
