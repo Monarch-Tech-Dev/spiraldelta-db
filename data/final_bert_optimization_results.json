@@ -1,0 +1,37 @@
+{
+  "optimization_complete": true,
+  "target_compression": 0.668,
+  "achieved_compression": 0.7,
+  "actual_compression": 0.9684729166666667,
+  "quality_metrics": {
+    "cosine_similarity": 0.19003432989120483,
+    "relative_error": 1.8557707071304321
+  },
+  "optimized_parameters": {
+    "quantization_levels": 4,
+    "n_subspaces": 12,
+    "n_bits": 7,
+    "anchor_stride": 64,
+    "spiral_constant": 1.618
+  },
+  "performance": {
+    "total_time_seconds": 70.08620429039001,
+    "encoding_rate_vectors_per_sec": 1174.893828837043,
+    "decoding_rate_vectors_per_sec": 22684.24884018012
+  },
+  "storage": {
+    "original_size_mb": 14.6484375,
+    "compressed_size_mb": 0.461822509765625,
+    "space_saved_mb": 14.186614990234375
+  },
+  "test_dataset": {
+    "vectors_tested": 5000,
+    "dimensions": 768,
+    "source": "synthetic"
+  },
+  "success_criteria": {
+    "target_achieved": true,
+    "quality_acceptable": false,
+    "overall_success": false
+  }
+}

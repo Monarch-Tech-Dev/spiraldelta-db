@@ -1,0 +1,57 @@
+{
+  "optimization_type": "quality_improvement",
+  "target_quality": 0.25,
+  "min_compression": 0.668,
+  "best_balanced_result": {
+    "params": {
+      "quantization_levels": 2,
+      "n_subspaces": 4,
+      "n_bits": 9,
+      "anchor_stride": 16,
+      "spiral_constant": 1.5
+    },
+    "quality": 0.3444156050682068,
+    "compression": 0.7,
+    "success": true,
+    "quality_met": true,
+    "compression_met": true,
+    "both_met": true,
+    "test_time": 18.884936809539795
+  },
+  "all_results": [
+    {
+      "params": {
+        "quantization_levels": 2,
+        "n_subspaces": 6,
+        "n_bits": 8,
+        "anchor_stride": 24,
+        "spiral_constant": 1.618
+      },
+      "quality": 0.19373127818107605,
+      "compression": 0.7,
+      "success": true,
+      "quality_met": false,
+      "compression_met": true,
+      "both_met": false,
+      "test_time": 14.791450262069702
+    },
+    {
+      "params": {
+        "quantization_levels": 2,
+        "n_subspaces": 4,
+        "n_bits": 9,
+        "anchor_stride": 16,
+        "spiral_constant": 1.5
+      },
+      "quality": 0.3444156050682068,
+      "compression": 0.7,
+      "success": true,
+      "quality_met": true,
+      "compression_met": true,
+      "both_met": true,
+      "test_time": 18.884936809539795
+    }
+  ],
+  "timestamp": 1750683356.065323,
+  "status": "SUCCESS - Both targets achieved"
+}

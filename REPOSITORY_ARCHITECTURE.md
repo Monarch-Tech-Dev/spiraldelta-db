@@ -29,7 +29,7 @@ pip install spiraldelta-db
 
 ### **Enterprise Package (Private Index)**
 ```bash
-pip install monarch-core --extra-index-url https://private.monarchai.com/pypi
+pip install monarch-core --extra-index-url https://enterprise.monarchai.com/pypi
 ```
 - Enterprise-grade features
 - Soft Armor integration

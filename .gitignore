@@ -58,6 +58,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Security: Exclude virtual environment completely
+venv/
+.venv/
+*/venv/
+*/.venv/
+
 # IDEs
 .vscode/
 .idea/
@@ -79,9 +85,16 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 data/
+!data/bert_production_profiles.json
+!data/fast_quality_optimization.json
+!data/final_bert_optimization_results.json
 datasets/
 logs/
 *.log
+
+# Security reports (internal use only)
+security_audit_report.json
+*_audit_report.json
 
 # Security - Never commit private repository content
 monarch-core/
@@ -102,6 +115,32 @@ secrets/
 **/monarch-core/
 **/private/
 **/.monarch/
+
+# Additional security patterns
+*.p8
+*.p7b
+*.crt
+*.cer
+*.der
+*_private_key*
+*_secret*
+*_token*
+.aws/
+.azure/
+.gcp/
+config.private.*
+credentials.*
+auth.json
+service-account*.json
+
+# API Keys and tokens (patterns)
+*api_key*
+*access_token*
+*secret_key*
+*private_key*
+.env.local
+.env.private
+.env.secret
 
 # Jupyter Notebook
 .ipynb_checkpoints
