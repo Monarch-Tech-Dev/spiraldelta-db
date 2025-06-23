@@ -133,6 +133,13 @@ credentials.*
 auth.json
 service-account*.json
 
+# Internal documentation (keep private)
+PRIVATE_INTEGRATION.md
+REPOSITORY_ARCHITECTURE.md
+FINAL_REPOSITORY_SUMMARY.md
+PROJECT_SUMMARY.md
+BERT_OPTIMIZATION_COMPLETE.md
+
 # API Keys and tokens (patterns)
 *api_key*
 *access_token*
