@@ -16,6 +16,21 @@ from .search_engine import SpiralSearchEngine
 from .storage import StorageEngine
 from .database import SpiralDeltaDB
 
+# GPU Acceleration
+try:
+    from .gpu_acceleration import (
+        GpuAccelerationEngine,
+        GpuConfig,
+        check_gpu_availability,
+        get_gpu_memory_info,
+        gpu_similarity_search,
+        gpu_build_index,
+        gpu_normalize_vectors
+    )
+    GPU_ACCELERATION_AVAILABLE = True
+except ImportError:
+    GPU_ACCELERATION_AVAILABLE = False
+
 # Data structures
 from .types import (
     SpiralCoordinate,
@@ -31,6 +46,15 @@ __all__ = [
     "DeltaEncoder",
     "SpiralSearchEngine",
     "StorageEngine",
+    # GPU Acceleration
+    "GpuAccelerationEngine",
+    "GpuConfig", 
+    "check_gpu_availability",
+    "get_gpu_memory_info",
+    "gpu_similarity_search",
+    "gpu_build_index",
+    "gpu_normalize_vectors",
+    "GPU_ACCELERATION_AVAILABLE",
     # Data types
     "SpiralCoordinate",
     "CompressedSequence", 

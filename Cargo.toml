@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "spiraldelta-distributed"
+]
+
+[workspace.dependencies]
+# Shared dependencies for all workspace members
+numpy = "0.20"
+pyo3 = { version = "0.20", features = ["extension-module"] }
+pyo3-numpy = "0.20"
+rayon = "1.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Performance-critical dependencies
+faiss = { version = "0.12", features = ["gpu"] }
+candle-core = "0.4"
+candle-nn = "0.4"
+hnsw = "0.11"
+arrow = "50.0"
+parquet = "50.0"
+
+# HTTP and networking
+reqwest = { version = "0.11", features = ["json", "stream"] }
+hyper = { version = "0.14", features = ["full"] }
+tower = "0.4"
+
+# Compression and serialization
+lz4_flex = "0.11"
+zstd = "0.13"
+bincode = "1.3"
+
+# Async and concurrency
+async-trait = "0.1"
+dashmap = "5.5"
+parking_lot = "0.12"

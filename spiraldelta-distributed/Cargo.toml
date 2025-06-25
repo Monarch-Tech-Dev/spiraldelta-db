@@ -1,0 +1,104 @@
+[package]
+name = "spiraldelta-distributed"
+version = "0.1.0"
+edition = "2021"
+description = "Distributed architecture components for SpiralDeltaDB"
+
+[lib]
+name = "spiraldelta_distributed"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Distributed systems
+tokio = { workspace = true, features = ["full", "tracing"] }
+tokio-util = "0.7"
+futures = "0.3"
+async-trait = { workspace = true }
+
+# Networking and RPC
+tonic = "0.10"
+prost = "0.12"
+hyper = { workspace = true }
+tower = { workspace = true }
+tower-service = "0.3"
+
+# Consensus and coordination
+raft = "0.7"
+etcd-rs = { version = "1.0", optional = true }
+consul = { version = "0.4", optional = true }
+
+# Serialization and data
+serde = { workspace = true }
+serde_json = { workspace = true }
+bincode = { workspace = true }
+prost-types = "0.12"
+
+# Hashing and partitioning
+blake3 = "1.5"
+consistent_hash = "0.1"
+ring = "0.17"
+
+# Error handling and logging
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Metrics and monitoring
+prometheus = { version = "0.13", optional = true }
+metrics = { version = "0.21", optional = true }
+metrics-exporter-prometheus = { version = "0.12", optional = true }
+
+# Storage and caching
+rocksdb = "0.21"
+redis = { version = "0.24", features = ["tokio-comp", "cluster"] }
+dashmap = { workspace = true }
+
+# Random number generation
+rand = "0.8"
+uuid = { version = "1.0", features = ["v4"] }
+
+# Compression and encoding
+lz4_flex = { workspace = true }
+zstd = { workspace = true }
+
+# Configuration
+config = "0.13"
+clap = { version = "4.0", features = ["derive"] }
+
+# Time and scheduling
+chrono = { version = "0.4", features = ["serde"] }
+cron = "0.12"
+
+# Load balancing
+tower-load-shed = "0.1"
+tower-limit = "0.3"
+tower-timeout = "0.3"
+
+[build-dependencies]
+tonic-build = "0.10"
+prost-build = "0.12"
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+tempfile = "3.8"
+
+[features]
+default = ["etcd", "redis-cluster"]
+etcd = ["dep:etcd-rs"]
+consul = ["dep:consul"]
+redis-cluster = ["redis/cluster"]
+metrics = ["dep:prometheus", "dep:metrics", "dep:metrics-exporter-prometheus"]
+
+[[bin]]
+name = "spiral-coordinator"
+path = "src/bin/coordinator.rs"
+
+[[bin]]
+name = "spiral-worker"
+path = "src/bin/worker.rs"
+
+[[bin]]
+name = "spiral-gateway"
+path = "src/bin/gateway.rs"
