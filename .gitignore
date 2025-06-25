@@ -139,6 +139,21 @@ REPOSITORY_ARCHITECTURE.md
 FINAL_REPOSITORY_SUMMARY.md
 PROJECT_SUMMARY.md
 BERT_OPTIMIZATION_COMPLETE.md
+INTERNAL_ROADMAP.md
+
+# Private/Premium feature implementations (keep separate)
+src/spiraldelta/api_aggregator/
+src/spiraldelta/sacred/
+test_api_aggregator.py
+test_sacred_integration.py
+*_api_aggregator.*
+*_sacred.*
+
+# Streamlit test databases and data files
+streamlit_test_*.db
+*.data
+test.data
+test_*.data
 
 # API Keys and tokens (patterns)
 *api_key*
