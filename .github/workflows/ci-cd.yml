@@ -1,0 +1,294 @@
+name: SpiralDelta CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: spiraldelta-api-aggregator
+  IMAGE_NAME_SACRED: spiraldelta-sacred-architecture
+
+jobs:
+  # Code Quality and Testing
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+        override: true
+    
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          api-aggregator-rs/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Install Rust dependencies
+      run: |
+        cargo --version
+        rustc --version
+    
+    - name: Lint Python code
+      run: |
+        black --check src/ tests/ web_dashboard/
+        isort --check-only src/ tests/ web_dashboard/
+        flake8 src/ tests/ web_dashboard/
+    
+    - name: Lint Rust code
+      run: |
+        cd api-aggregator-rs
+        cargo fmt -- --check
+        cargo clippy -- -D warnings
+    
+    - name: Type check Python
+      run: |
+        mypy src/ --ignore-missing-imports
+    
+    - name: Run Python tests
+      run: |
+        pytest tests/ -v --cov=src --cov-report=xml
+    
+    - name: Run Rust tests
+      run: |
+        cd api-aggregator-rs
+        cargo test --verbose
+    
+    - name: Run integration tests
+      run: |
+        python run_tests.py
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+  # Security Scanning
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Python security scan
+      run: |
+        pip install safety bandit
+        safety check -r requirements.txt
+        bandit -r src/ -f json -o bandit-report.json
+    
+    - name: Run Rust security audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          audit-results.json
+
+  # Performance Benchmarks
+  benchmark:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        cd api-aggregator-rs && cargo build --release
+    
+    - name: Run performance benchmarks
+      run: |
+        python scripts/benchmark.py --output benchmark-results.json
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark-results.json
+
+  # Build and Push Docker Images
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Extract metadata for API Aggregator
+      id: meta-api
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME_API }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Extract metadata for Sacred Architecture
+      id: meta-sacred
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME_SACRED }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push API Aggregator image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile.api-aggregator
+        push: true
+        tags: ${{ steps.meta-api.outputs.tags }}
+        labels: ${{ steps.meta-api.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Sacred Architecture image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile.sacred-architecture
+        push: true
+        tags: ${{ steps.meta-sacred.outputs.tags }}
+        labels: ${{ steps.meta-sacred.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Deploy to staging
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.STAGING_HOST }}
+        username: ${{ secrets.STAGING_USER }}
+        key: ${{ secrets.STAGING_SSH_KEY }}
+        script: |
+          cd /opt/spiraldelta-staging
+          docker-compose pull
+          docker-compose up -d
+          docker system prune -f
+
+  # Deploy to Production
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Deploy to production
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /opt/spiraldelta-production
+          docker-compose pull
+          docker-compose up -d --no-deps api-aggregator sacred-architecture
+          docker system prune -f
+    
+    - name: Run health checks
+      run: |
+        sleep 30
+        curl -f https://api.spiraldelta.com/health
+        curl -f https://sacred.spiraldelta.com/health
+    
+    - name: Notify deployment success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        text: '🚀 SpiralDelta production deployment successful!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Notify on failure
+  notify-failure:
+    needs: [test, security, build, deploy-production]
+    runs-on: ubuntu-latest
+    if: failure()
+    
+    steps:
+    - name: Notify deployment failure
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#deployments'
+        text: '❌ SpiralDelta deployment failed! Check GitHub Actions for details.'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
