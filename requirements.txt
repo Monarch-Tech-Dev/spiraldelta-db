@@ -24,3 +24,6 @@ plotly>=5.0.0
 pandas>=1.4.0
 seaborn>=0.11.0
 memory-profiler>=0.60.0
+
+# Streamlit dashboard dependencies
+streamlit>=1.28.0

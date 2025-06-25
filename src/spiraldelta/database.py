@@ -173,8 +173,9 @@ class SpiralDeltaDB:
             batch_ids = self._insert_batch(batch_vectors, batch_metadata)
             all_vector_ids.extend(batch_ids)
         
-        # Auto-train encoder if threshold reached
-        if not self._is_trained and len(self._training_data) >= self.auto_train_threshold:
+        # Auto-train encoder if threshold reached (count total vectors, not batches)
+        total_training_vectors = sum(len(batch) for batch in self._training_data)
+        if not self._is_trained and total_training_vectors >= self.auto_train_threshold:
             self._auto_train_encoder()
         
         # Auto-optimize if requested
